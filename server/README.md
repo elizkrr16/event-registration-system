@@ -1,1 +1,1 @@
-Backend API (PHP + PDO for XAMPP)
+PHP backend for XAMPP with PDO, session auth and JSON API.

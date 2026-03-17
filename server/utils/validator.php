@@ -13,7 +13,7 @@ function requireFields(array $data, array $fields): void
     if ($missing !== []) {
         jsonResponse([
             'success' => false,
-            'message' => 'Missing required fields.',
+            'message' => 'Заполните обязательные поля.',
             'errors' => $missing,
         ], 422);
     }
@@ -26,7 +26,7 @@ function validateEmailValue(string $email): string
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         jsonResponse([
             'success' => false,
-            'message' => 'Invalid email address.',
+            'message' => 'Некорректный email.',
         ], 422);
     }
 
@@ -38,7 +38,7 @@ function validatePasswordValue(string $password): string
     if (mb_strlen($password) < 6) {
         jsonResponse([
             'success' => false,
-            'message' => 'Password must contain at least 6 characters.',
+            'message' => 'Пароль должен содержать не менее 6 символов.',
         ], 422);
     }
 
@@ -54,7 +54,7 @@ function validatePositiveInt(mixed $value, string $fieldName): int
     if ($validated === false) {
         jsonResponse([
             'success' => false,
-            'message' => "Field {$fieldName} must be a positive integer.",
+            'message' => "Поле {$fieldName} должно быть положительным числом.",
         ], 422);
     }
 
@@ -68,11 +68,25 @@ function validateEventStatus(string $status): string
     if (!in_array($status, $allowed, true)) {
         jsonResponse([
             'success' => false,
-            'message' => 'Invalid event status.',
+            'message' => 'Некорректный статус мероприятия.',
         ], 422);
     }
 
     return $status;
+}
+
+function validateEventFormat(string $format): string
+{
+    $allowed = ['online', 'offline', 'hybrid'];
+
+    if (!in_array($format, $allowed, true)) {
+        jsonResponse([
+            'success' => false,
+            'message' => 'Некорректный формат мероприятия.',
+        ], 422);
+    }
+
+    return $format;
 }
 
 function validateDateTimeValue(string $value, string $fieldName): string
@@ -82,7 +96,7 @@ function validateDateTimeValue(string $value, string $fieldName): string
     if (!$date) {
         jsonResponse([
             'success' => false,
-            'message' => "Field {$fieldName} must be a valid date/time.",
+            'message' => "Поле {$fieldName} должно содержать корректную дату и время.",
         ], 422);
     }
 

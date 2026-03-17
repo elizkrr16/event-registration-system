@@ -7,43 +7,42 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 $data = readJsonInput();
-requireFields($data, ['full_name', 'email', 'password']);
+requireFields($data, ['full_name', 'email', 'phone', 'password']);
 
 $fullName = trim((string) $data['full_name']);
 $email = validateEmailValue((string) $data['email']);
+$phone = trim((string) $data['phone']);
 $password = validatePasswordValue((string) $data['password']);
-$groupName = trim((string) ($data['group_name'] ?? ''));
-$phone = trim((string) ($data['phone'] ?? ''));
 
 try {
     $pdo = getDb();
 
-    $checkStmt = $pdo->prepare('SELECT id FROM students WHERE email = :email LIMIT 1');
+    $checkStmt = $pdo->prepare('SELECT student_id FROM students WHERE email = :email LIMIT 1');
     $checkStmt->execute(['email' => $email]);
 
     if ($checkStmt->fetch()) {
         jsonResponse([
             'success' => false,
-            'message' => 'A user with this email already exists.',
+            'message' => 'Пользователь с таким email уже зарегистрирован.',
         ], 409);
     }
 
     $stmt = $pdo->prepare('
-        INSERT INTO students (full_name, email, password_hash, group_name, phone)
-        VALUES (:full_name, :email, :password_hash, :group_name, :phone)
+        INSERT INTO students (full_name, email, phone, password_hash)
+        VALUES (:full_name, :email, :phone, :password_hash)
     ');
     $stmt->execute([
         'full_name' => $fullName,
         'email' => $email,
+        'phone' => $phone,
         'password_hash' => password_hash($password, PASSWORD_DEFAULT),
-        'group_name' => $groupName !== '' ? $groupName : null,
-        'phone' => $phone !== '' ? $phone : null,
     ]);
 
     $user = [
         'id' => (int) $pdo->lastInsertId(),
         'full_name' => $fullName,
         'email' => $email,
+        'phone' => $phone,
         'role' => 'student',
     ];
 
@@ -51,13 +50,13 @@ try {
 
     jsonResponse([
         'success' => true,
-        'message' => 'Registration completed successfully.',
+        'message' => 'Регистрация прошла успешно.',
         'data' => $user,
     ], 201);
 } catch (PDOException $exception) {
     jsonResponse([
         'success' => false,
-        'message' => 'Failed to register user.',
+        'message' => 'Не удалось зарегистрировать пользователя.',
         'error' => $exception->getMessage(),
     ], 500);
 }

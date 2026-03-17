@@ -11,7 +11,7 @@ $user = requireAuth();
 if ($user['role'] !== 'student') {
     jsonResponse([
         'success' => false,
-        'message' => 'Only students can register for events.',
+        'message' => 'Записаться на мероприятие может только участник.',
     ], 403);
 }
 
@@ -24,28 +24,35 @@ try {
 
     $eventStmt = $pdo->prepare('
         SELECT
-            e.id,
+            e.event_id,
             e.capacity,
             e.status,
-            COUNT(r.id) AS registrations_count
+            COUNT(r.registration_id) AS registrations_count
         FROM events e
-        LEFT JOIN registrations r ON r.event_id = e.id AND r.status = "registered"
-        WHERE e.id = :event_id
-        GROUP BY e.id, e.capacity, e.status
+        LEFT JOIN registrations r ON r.event_id = e.event_id AND r.status = "registered"
+        WHERE e.event_id = :event_id
+        GROUP BY e.event_id, e.capacity, e.status
         LIMIT 1
     ');
     $eventStmt->execute(['event_id' => $eventId]);
     $event = $eventStmt->fetch();
 
-    if (!$event || $event['status'] !== 'published') {
+    if (!$event) {
         jsonResponse([
             'success' => false,
-            'message' => 'Event is not available for registration.',
+            'message' => 'Мероприятие не найдено.',
         ], 404);
     }
 
+    if ($event['status'] !== 'published') {
+        jsonResponse([
+            'success' => false,
+            'message' => 'Запись на это мероприятие недоступна.',
+        ], 409);
+    }
+
     $existingStmt = $pdo->prepare('
-        SELECT id, status
+        SELECT registration_id, status
         FROM registrations
         WHERE event_id = :event_id AND student_id = :student_id
         LIMIT 1
@@ -59,24 +66,24 @@ try {
     if ($existing && $existing['status'] === 'registered') {
         jsonResponse([
             'success' => false,
-            'message' => 'You are already registered for this event.',
+            'message' => 'Вы уже зарегистрированы на это мероприятие.',
         ], 409);
     }
 
     if ((int) $event['registrations_count'] >= (int) $event['capacity']) {
         jsonResponse([
             'success' => false,
-            'message' => 'Registration is closed because the event is full.',
+            'message' => 'Свободных мест больше нет.',
         ], 409);
     }
 
     if ($existing) {
         $updateStmt = $pdo->prepare('
             UPDATE registrations
-            SET status = "registered", registered_at = NOW()
-            WHERE id = :id
+            SET status = "registered", registered_at = NOW(), cancelled_at = NULL
+            WHERE registration_id = :registration_id
         ');
-        $updateStmt->execute(['id' => $existing['id']]);
+        $updateStmt->execute(['registration_id' => $existing['registration_id']]);
     } else {
         $insertStmt = $pdo->prepare('
             INSERT INTO registrations (event_id, student_id, status)
@@ -90,12 +97,13 @@ try {
 
     jsonResponse([
         'success' => true,
-        'message' => 'Registration completed successfully.',
+        'message' => 'Вы успешно записались на мероприятие.',
+        'data' => null,
     ], 201);
 } catch (PDOException $exception) {
     jsonResponse([
         'success' => false,
-        'message' => 'Failed to create registration.',
+        'message' => 'Не удалось выполнить регистрацию.',
         'error' => $exception->getMessage(),
     ], 500);
 }

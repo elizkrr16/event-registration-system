@@ -8,31 +8,31 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 requireAdmin();
 $data = readJsonInput();
-requireFields($data, ['id']);
+requireFields($data, ['event_id']);
 
-$eventId = validatePositiveInt($data['id'], 'id');
+$eventId = validatePositiveInt($data['event_id'], 'event_id');
 
 try {
     $pdo = getDb();
-
-    $stmt = $pdo->prepare('UPDATE events SET status = "cancelled" WHERE id = :id');
-    $stmt->execute(['id' => $eventId]);
+    $stmt = $pdo->prepare('UPDATE events SET status = "cancelled" WHERE event_id = :event_id');
+    $stmt->execute(['event_id' => $eventId]);
 
     if ($stmt->rowCount() === 0) {
         jsonResponse([
             'success' => false,
-            'message' => 'Event not found.',
+            'message' => 'Мероприятие не найдено.',
         ], 404);
     }
 
     jsonResponse([
         'success' => true,
-        'message' => 'Event archived successfully.',
+        'message' => 'Мероприятие скрыто.',
+        'data' => null,
     ]);
 } catch (PDOException $exception) {
     jsonResponse([
         'success' => false,
-        'message' => 'Failed to archive event.',
+        'message' => 'Не удалось изменить статус мероприятия.',
         'error' => $exception->getMessage(),
     ], 500);
 }

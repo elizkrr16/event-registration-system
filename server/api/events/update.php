@@ -8,66 +8,90 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 requireAdmin();
 $data = readJsonInput();
-requireFields($data, ['id', 'title', 'short_description', 'description', 'location', 'event_date', 'capacity', 'category_id', 'status']);
+requireFields($data, [
+    'event_id',
+    'title',
+    'short_description',
+    'description',
+    'city',
+    'location',
+    'format',
+    'starts_at',
+    'ends_at',
+    'capacity',
+    'category_id',
+    'status',
+    'program',
+]);
 
-$eventId = validatePositiveInt($data['id'], 'id');
+$eventId = validatePositiveInt($data['event_id'], 'event_id');
 $title = trim((string) $data['title']);
 $shortDescription = trim((string) $data['short_description']);
 $description = trim((string) $data['description']);
+$city = trim((string) $data['city']);
 $location = trim((string) $data['location']);
-$eventDate = validateDateTimeValue((string) $data['event_date'], 'event_date');
+$format = validateEventFormat((string) $data['format']);
+$startsAt = validateDateTimeValue((string) $data['starts_at'], 'starts_at');
+$endsAt = validateDateTimeValue((string) $data['ends_at'], 'ends_at');
 $capacity = validatePositiveInt($data['capacity'], 'capacity');
 $categoryId = validatePositiveInt($data['category_id'], 'category_id');
 $status = validateEventStatus((string) $data['status']);
+$program = trim((string) $data['program']);
+$imageUrl = trim((string) ($data['image_url'] ?? ''));
+
+if (strtotime($endsAt) <= strtotime($startsAt)) {
+    jsonResponse([
+        'success' => false,
+        'message' => 'Дата окончания должна быть позже даты начала.',
+    ], 422);
+}
 
 try {
     $pdo = getDb();
-
     $stmt = $pdo->prepare('
         UPDATE events
         SET
+            category_id = :category_id,
             title = :title,
             short_description = :short_description,
             description = :description,
+            city = :city,
             location = :location,
-            event_date = :event_date,
+            format = :format,
+            starts_at = :starts_at,
+            ends_at = :ends_at,
             capacity = :capacity,
-            category_id = :category_id,
-            status = :status
-        WHERE id = :id
+            status = :status,
+            program = :program,
+            image_url = :image_url
+        WHERE event_id = :event_id
     ');
     $stmt->execute([
-        'id' => $eventId,
+        'event_id' => $eventId,
+        'category_id' => $categoryId,
         'title' => $title,
         'short_description' => $shortDescription,
         'description' => $description,
+        'city' => $city,
         'location' => $location,
-        'event_date' => $eventDate,
+        'format' => $format,
+        'starts_at' => $startsAt,
+        'ends_at' => $endsAt,
         'capacity' => $capacity,
-        'category_id' => $categoryId,
         'status' => $status,
+        'program' => $program,
+        'image_url' => $imageUrl !== '' ? $imageUrl : null,
     ]);
-
-    if ($stmt->rowCount() === 0) {
-        $checkStmt = $pdo->prepare('SELECT id FROM events WHERE id = :id LIMIT 1');
-        $checkStmt->execute(['id' => $eventId]);
-
-        if (!$checkStmt->fetch()) {
-            jsonResponse([
-                'success' => false,
-                'message' => 'Event not found.',
-            ], 404);
-        }
-    }
 
     jsonResponse([
         'success' => true,
-        'message' => 'Event updated successfully.',
+        'message' => 'Мероприятие обновлено.',
+        'data' => null,
     ]);
 } catch (PDOException $exception) {
     jsonResponse([
         'success' => false,
-        'message' => 'Failed to update event.',
+        'message' => 'Не удалось обновить мероприятие.',
         'error' => $exception->getMessage(),
     ], 500);
 }

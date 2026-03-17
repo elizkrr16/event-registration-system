@@ -8,22 +8,23 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 
 try {
     $pdo = getDb();
-    $stmt = $pdo->query('SELECT id, name, description FROM categories ORDER BY name ASC');
+    $stmt = $pdo->query('SELECT category_id, name, description FROM categories ORDER BY name ASC');
     $categories = $stmt->fetchAll();
-
-    $result = array_map(static function (array $row): array {
-        $row['id'] = (int) $row['id'];
-        return $row;
-    }, $categories);
 
     jsonResponse([
         'success' => true,
-        'data' => $result,
+        'data' => array_map(static function (array $row): array {
+            return [
+                'category_id' => (int) $row['category_id'],
+                'name' => $row['name'],
+                'description' => $row['description'],
+            ];
+        }, $categories),
     ]);
 } catch (PDOException $exception) {
     jsonResponse([
         'success' => false,
-        'message' => 'Failed to load categories.',
+        'message' => 'Не удалось загрузить категории.',
         'error' => $exception->getMessage(),
     ], 500);
 }

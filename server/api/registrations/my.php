@@ -11,48 +11,64 @@ $user = requireAuth();
 if ($user['role'] !== 'student') {
     jsonResponse([
         'success' => false,
-        'message' => 'Only students can view personal registrations.',
+        'message' => 'Раздел доступен только участнику.',
     ], 403);
 }
 
 try {
     $pdo = getDb();
-
     $stmt = $pdo->prepare('
         SELECT
-            r.id,
-            r.status,
+            r.registration_id,
+            r.status AS registration_status,
             r.registered_at,
-            e.id AS event_id,
+            r.cancelled_at,
+            e.event_id,
             e.title,
             e.short_description,
+            e.city,
             e.location,
-            e.event_date,
+            e.format,
+            e.starts_at,
+            e.ends_at,
             e.status AS event_status,
             c.name AS category_name
         FROM registrations r
-        INNER JOIN events e ON e.id = r.event_id
-        INNER JOIN categories c ON c.id = e.category_id
+        INNER JOIN events e ON e.event_id = r.event_id
+        INNER JOIN categories c ON c.category_id = e.category_id
         WHERE r.student_id = :student_id
-        ORDER BY r.registered_at DESC
+        ORDER BY e.starts_at ASC
     ');
     $stmt->execute(['student_id' => $user['id']]);
     $rows = $stmt->fetchAll();
 
-    $registrations = array_map(static function (array $row): array {
-        $row['id'] = (int) $row['id'];
-        $row['event_id'] = (int) $row['event_id'];
-        return $row;
+    $result = array_map(static function (array $row): array {
+        return [
+            'registration_id' => (int) $row['registration_id'],
+            'registration_status' => $row['registration_status'],
+            'registered_at' => $row['registered_at'],
+            'cancelled_at' => $row['cancelled_at'],
+            'event_id' => (int) $row['event_id'],
+            'title' => $row['title'],
+            'short_description' => $row['short_description'],
+            'city' => $row['city'],
+            'location' => $row['location'],
+            'format' => $row['format'],
+            'starts_at' => $row['starts_at'],
+            'ends_at' => $row['ends_at'],
+            'event_status' => $row['event_status'],
+            'category_name' => $row['category_name'],
+        ];
     }, $rows);
 
     jsonResponse([
         'success' => true,
-        'data' => $registrations,
+        'data' => $result,
     ]);
 } catch (PDOException $exception) {
     jsonResponse([
         'success' => false,
-        'message' => 'Failed to load registrations.',
+        'message' => 'Не удалось загрузить список ваших мероприятий.',
         'error' => $exception->getMessage(),
     ], 500);
 }
