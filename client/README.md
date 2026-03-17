@@ -1,7 +1,16 @@
-React frontend for the Event Registration System.
+# НаВстречу Frontend
 
-Local start:
-- `npm install`
-- `npm start`
+React-клиент на JavaScript для системы регистрации на мероприятия.
 
-API base URL can be changed with `VITE_API_BASE_URL`.
+Запуск:
+
+```bash
+npm install
+npm start
+```
+
+По умолчанию клиент обращается к:
+
+```text
+http://localhost/event-registration-system/server/api
+```
