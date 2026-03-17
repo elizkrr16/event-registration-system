@@ -1,1 +1,1 @@
-Backend API (Node.js + Express)
+Backend API (PHP + PDO for XAMPP)
